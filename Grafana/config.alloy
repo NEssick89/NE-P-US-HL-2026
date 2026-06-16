@@ -1,15 +1,15 @@
-# Alloy configuration
+// Alloy configuration
 logging {
   level = "warn"
 }
-# Scrape node_exporter
+// Scrape node_exporter
 prometheus.scrape "node_exporter" {
   targets = [{
     __address__ = "localhost:9100",
   }]
   forward_to = [prometheus.remote_write.grafanacloud.receiver]
 }
-# Push to Grafana cloud
+// Push to Grafana cloud
 prometheus.remote_write "grafanacloud" {
   endpoint {
     url = "https://prometheus-prod-66-prod-us-east-3.grafana.net/api/prom/push"
