@@ -1,22 +1,52 @@
-// Alloy configuration
-logging {
-  level = "warn"
-}
-// Scrape node_exporter
+// Alloy configuration for ubuntu-server-01
+
+// Prometheus: scrape Node Exporter
 prometheus.scrape "node_exporter" {
   targets = [{
     __address__ = "localhost:9100",
   }]
   forward_to = [prometheus.remote_write.grafanacloud.receiver]
 }
-// Push to Grafana cloud
+
+// Prometheus: push metrics to Grafana Cloud
 prometheus.remote_write "grafanacloud" {
   endpoint {
     url = "https://prometheus-prod-66-prod-us-east-3.grafana.net/api/prom/push"
-
     basic_auth {
       username = "3308360"
       password = env("GC_APIK")
     }
   }
+}
+
+// Loki: push logs to Grafana Cloud
+loki.write "grafanacloud" {
+  endpoint {
+    url = "https://logs-prod-042.grafana.net/loki/api/v1/push"
+    basic_auth {
+      username = "1649855"
+      password = env("GC_APIK")
+    }
+  }
+}
+
+// Loki: collect systemd journal logs
+loki.source.journal "system_journal" {
+  max_age       = "24h0m0s"
+  forward_to    = [loki.write.grafanacloud.receiver]
+}
+
+// Loki: collect /var/log files
+local.file_match "system_logs" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/{syslog,messages,*.log}",
+    instance    = "ubuntu-server-01",
+    job         = "varlogs",
+  }]
+}
+
+loki.source.file "system_logs" {
+  targets    = local.file_match.system_logs.targets
+  forward_to = [loki.write.grafanacloud.receiver]
 }
